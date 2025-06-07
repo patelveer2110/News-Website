@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@plugin "daisyui";
+@layer components {
+  .ProseMirror {
+    @apply bg-base-100 text-base-content min-h-[280px] outline-none shadow-none p-0 m-0;
+  }
+
+  .prose h1 {
+    @apply text-[30px] mt-6 mb-4;
+  }
+
+  .prose h2 {
+    @apply text-[24px] mt-5 mb-3;
+  }
+
+  .prose h3 {
+    @apply text-[20px] mt-4 mb-2;
+  }
+
+  .prose p {
+    @apply text-[14px] text-justify;
+  }
+
+   .prose ul {
+    @apply list-disc pl-6 text-[14px] mb-2;
+  }
+
+  .prose ol {
+    @apply list-decimal pl-6 text-[14px] mb-2;
+  }
+
+  .prose li {
+    @apply mb-1 text-[14px] text-justify;
+  }
+
+    .ProseMirror.bullet-disc ul {
+    list-style-type: disc !important;
+    padding-left: 1.5rem;
+  }
+
+  .ProseMirror.bullet-circle ul {
+    list-style-type: circle !important;
+    padding-left: 1.5rem;
+  }
+
+  .ProseMirror.bullet-square ul {
+    list-style-type: square !important;
+    padding-left: 1.5rem;
+  }
+
+  /* ORDERED LIST STYLES */
+  .ProseMirror.ordered-decimal ol {
+    list-style-type: decimal !important;
+    padding-left: 1.5rem;
+  }
+
+  .ProseMirror.ordered-lower-alpha ol {
+    list-style-type: lower-alpha !important;
+    padding-left: 1.5rem;
+  }
+
+  .ProseMirror.ordered-lower-roman ol {
+    list-style-type: lower-roman !important;
+    padding-left: 1.5rem;
+  }
+
+  /* LIST ITEM BASE STYLING */
+  .ProseMirror li {
+    margin-bottom: 0.25rem;
+    font-size: 14px;
+    text-align: justify;
+  }
+  .ProseMirror img[data-type="resizable-image"] {
+  display: inline-block;
+  vertical-align: middle;
+  margin: 0 5px;
+}
+
+}
+
+/* ProseMirror editor container styles for bullet lists */
+/* .ProseMirror.bullet-disc ul {
+  list-style-type: disc;
+}
+
+.ProseMirror.bullet-square ul {
+  list-style-type: square;
+}
+ */
+/* ProseMirror editor container styles for ordered lists */
+/*.ProseMirror.ordered-decimal ol {
+  list-style-type: decimal;
+}
+
+.ProseMirror.ordered-lower-alpha ol {
+  list-style-type: lower-alpha;
+}
+
+.ProseMirror.ordered-lower-roman ol {
+  list-style-type: lower-roman;
+} */
