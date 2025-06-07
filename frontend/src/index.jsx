@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import './index.css';
 import App from './App';
 import { ConfirmDialogProvider } from './components/ConfirmDialog';
-// import { ChakraProvider } from '@chakra-ui/react';
+import { ChakraProvider } from '@chakra-ui/react';
 // import reportWebVitals from './reportWebVitals';
 import ErrorBoundary from './components/ErrorBoundary';
 const root = ReactDOM.createRoot(document.getElementById('root'));
@@ -19,13 +19,13 @@ root.render(
    <React.StrictMode>
 
     <BrowserRouter>
-    {/* <ChakraProvider> */}
+    <ChakraProvider>
     <ConfirmDialogProvider>
     <ErrorBoundary>
       <App />
     </ErrorBoundary>
     </ConfirmDialogProvider>
-    {/* </ChakraProvider> */}
+    </ChakraProvider>
     </BrowserRouter>
    </React.StrictMode>
   </React.Fragment>
