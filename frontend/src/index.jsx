@@ -3,10 +3,11 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import './index.css';
 import App from './App';
-import { ConfirmDialogProvider } from './components/ConfirmDialog';
-import { ChakraProvider } from '@chakra-ui/react';
+import { ConfirmDialogProvider } from './context/ConfirmDialogContext';
+// import { ChakraProvider } from '@chakra-ui/react';
 // import reportWebVitals from './reportWebVitals';
 import ErrorBoundary from './components/ErrorBoundary';
+import { ThemeProvider } from './context/ThemeContext';
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   
@@ -19,13 +20,16 @@ root.render(
    <React.StrictMode>
 
     <BrowserRouter>
-    <ChakraProvider>
+    {/* <ChakraProvider> */}
+    <ThemeProvider>
+      
     <ConfirmDialogProvider>
     <ErrorBoundary>
       <App />
     </ErrorBoundary>
     </ConfirmDialogProvider>
-    </ChakraProvider>
+    </ThemeProvider>
+    {/* </ChakraProvider> */}
     </BrowserRouter>
    </React.StrictMode>
   </React.Fragment>

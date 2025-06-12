@@ -3,6 +3,7 @@ import axios from "axios";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { backendURL } from "../App";
 import { adminAuth } from "../hooks/adminAuth";
+import { useConfirmDialog } from "../context/ConfirmDialogContext";
 
 const statusOptions = [
   { label: "All", value: "" },
@@ -28,6 +29,7 @@ const AdminPosts = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { token, adminId } = adminAuth();
+  const { showAlert,showConfirm } = useConfirmDialog();
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -49,7 +51,10 @@ const AdminPosts = () => {
         setPosts(fetchedPosts);
       } catch (error) {
         console.error("Failed to fetch posts:", error);
-        window.alert("Error fetching posts. Please try again.");
+        showAlert({
+          title: "Error",
+          description: "Failed to fetch posts. Please try again later.",
+        });
       } finally {
         setLoading(false);
       }
@@ -89,18 +94,29 @@ const AdminPosts = () => {
   };
 
   const handleDelete = async (postId) => {
-    const confirmed = window.confirm("Are you sure you want to delete this post?");
+   
+    const confirmed = await showConfirm({
+      title: "Delete Post",
+      description: "Are you sure you want to delete this post? This action cannot be undone.",
+    });
     if (!confirmed) return;
+    
 
     try {
       await axios.delete(`${backendURL}/api/post/delete/${postId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setPosts((prev) => prev.filter((post) => post._id !== postId));
-      window.alert("Post deleted.");
+      showAlert({
+        title: "Post Deleted",
+        description: "The post has been successfully deleted.",
+      });
     } catch (error) {
       console.error("Failed to delete post:", error);
-      window.alert("Error deleting post. Please try again.");
+      showAlert({
+        title: "Error",
+        description: "Failed to delete the post. Please try again.",
+      });
     }
   };
 
@@ -117,7 +133,10 @@ const AdminPosts = () => {
       );
     } catch (error) {
       console.error("Failed to update status:", error);
-      window.alert("Error updating status. Try again.");
+      showAlert({
+        title: "Error",
+        description: "Failed to update post status. Please try again.",
+      });
     }
   };
 

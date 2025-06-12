@@ -68,6 +68,15 @@ const AdminHome = () => {
     .sort((a, b) => (b.views || 0) - (a.views || 0))
     .slice(0, 3), [filteredPosts]);
 
+  const topLikedPosts = useMemo(() => [...filteredPosts]
+    .sort((a, b) => (b.likesCount || 0) - (a.likesCount || 0))
+    .slice(0, 3), [filteredPosts]);
+
+  const topRatedPosts = useMemo(() => [...filteredPosts]
+    .filter(p => typeof p.rating === "number")
+    .sort((a, b) => b.rating - a.rating)
+    .slice(0, 3), [filteredPosts]);
+
   const handleFilterRedirect = (filter) => {
     navigate(`/admin/post${filter ? `?status=${filter}` : ""}`);
   };
@@ -84,20 +93,41 @@ const AdminHome = () => {
     );
   }
 
+  const PostCard = ({ post, icon, label }) => (
+    <li
+      onClick={() => handlePostRedirect(post._id)}
+      className="py-4 px-4 hover:bg-base-300 rounded-lg cursor-pointer flex justify-between items-center transition"
+    >
+      <div>
+        <p className="text-lg font-semibold">{post.title}</p>
+        <p className="text-sm text-base-content/70 flex gap-4">
+          <span>{icon} {label}</span>
+          <span className="capitalize font-medium px-2 py-0.5 rounded text-xs bg-base-content/10">
+            {post.status}
+          </span>
+        </p>
+      </div>
+      <div className="text-right text-xs text-base-content/50">
+        <p>{new Date(post.createdAt).toLocaleDateString()}</p>
+        <p>{new Date(post.createdAt).toLocaleTimeString()}</p>
+      </div>
+    </li>
+  );
+
   return (
-    <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-8">
-      <h1 className="text-3xl font-bold mb-2 text-base-content">Admin Dashboard</h1>
+    <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-10">
+      <h1 className="text-3xl font-bold text-base-content">Admin Dashboard</h1>
 
       {/* Search */}
       <input
         type="search"
         placeholder="Search posts by title..."
-        className="input input-bordered w-full max-w-md mb-6"
+        className="input input-bordered w-full max-w-md"
         onChange={(e) => debouncedSearch(e.target.value)}
       />
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
         {[{
           label: "Total Posts",
           value: postStats.total,
@@ -153,45 +183,48 @@ const AdminHome = () => {
         ))}
       </div>
 
-      {/* Top Viewed Posts */}
+      {/* Most Viewed */}
       <section>
         <h2 className="text-xl font-bold mb-4">Top Viewed Posts</h2>
-        {topPosts.length === 0 ? (
-          <p className="italic text-base-content/60">No posts found.</p>
-        ) : (
-          <ul className="bg-base-200 p-4 rounded-xl shadow divide-y divide-base-300">
-            {topPosts.map(post => (
-              <li
-                key={post._id}
-                onClick={() => handlePostRedirect(post._id)}
-                className="py-3 px-3 hover:bg-base-300 cursor-pointer rounded-lg flex justify-between items-center transition-all"
-                title={`Status: ${post.status}`}
-              >
-                <div>
-                  <p className="font-semibold text-lg">{post.title}</p>
-                  <p className="text-sm text-base-content/70 flex gap-4">
-                    <span>👁️ {post.views || 0} views</span>
-                    <span>❤️ {post.likesCount || 0} likes</span>
-                    <span className="capitalize font-medium px-2 py-0.5 rounded text-xs bg-base-content/10">{post.status}</span>
-                  </p>
-                </div>
-                <span className="text-xs text-base-content/50">
-                  {new Date(post.createdAt).toLocaleDateString()}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+        <ul className="bg-base-200 p-4 rounded-xl shadow divide-y divide-base-300">
+          {topPosts.length > 0
+            ? topPosts.map(post => (
+              <PostCard key={post._id} post={post} icon="👁️" label={`${post.views || 0} views`} />
+            ))
+            : <p className="italic text-base-content/60">No posts found.</p>}
+        </ul>
+      </section>
+
+      {/* Most Liked */}
+      <section>
+        <h2 className="text-xl font-bold mb-4">Most Liked Posts</h2>
+        <ul className="bg-base-200 p-4 rounded-xl shadow divide-y divide-base-300">
+          {topLikedPosts.length > 0
+            ? topLikedPosts.map(post => (
+              <PostCard key={post._id} post={post} icon="❤️" label={`${post.likesCount || 0} likes`} />
+            ))
+            : <p className="italic text-base-content/60">No posts found.</p>}
+        </ul>
+      </section>
+
+      {/* Top Rated */}
+      <section>
+        <h2 className="text-xl font-bold mb-4">Top Rated Posts</h2>
+        <ul className="bg-base-200 p-4 rounded-xl shadow divide-y divide-base-300">
+          {topRatedPosts.length > 0
+            ? topRatedPosts.map(post => (
+              <PostCard key={post._id} post={post} icon="⭐" label={`${post.rating.toFixed(1)} / 5`} />
+            ))
+            : <p className="italic text-base-content/60">No rated posts yet.</p>}
+        </ul>
       </section>
 
       {/* Recent Posts */}
       <section>
         <h2 className="text-xl font-bold mb-4">Recent Posts</h2>
-        {recentPosts.length === 0 ? (
-          <p className="italic text-base-content/60">No posts found.</p>
-        ) : (
-          <ul className="bg-base-200 p-4 rounded-xl shadow divide-y divide-base-300">
-            {recentPosts.map(post => (
+        <ul className="bg-base-200 p-4 rounded-xl shadow divide-y divide-base-300">
+          {recentPosts.length > 0
+            ? recentPosts.map(post => (
               <li
                 key={post._id}
                 onClick={() => handlePostRedirect(post._id)}
@@ -209,9 +242,9 @@ const AdminHome = () => {
                   {new Date(post.createdAt).toLocaleTimeString()}
                 </span>
               </li>
-            ))}
-          </ul>
-        )}
+            ))
+            : <p className="italic text-base-content/60">No posts found.</p>}
+        </ul>
       </section>
 
       {/* Floating Button */}

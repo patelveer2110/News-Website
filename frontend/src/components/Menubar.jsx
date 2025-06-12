@@ -5,6 +5,7 @@ import {
   ImageIcon, Droplet
 } from "lucide-react";
 import { FaFont } from "react-icons/fa";
+import { useConfirmDialog } from "../context/ConfirmDialogContext";
 
 const Button = ({ onClick, active, icon: Icon, title }) => (
   <button
@@ -24,6 +25,7 @@ const MenuBar = ({ editor }) => {
   const [fontColor, setFontColor] = useState("#000000");
   const [fontSize, setFontSize] = useState("16px");
   const [fontFamily, setFontFamily] = useState("Arial");
+  const {showAlert} = useConfirmDialog();
 
   if (!editor) return null;
 
@@ -53,11 +55,14 @@ const MenuBar = ({ editor }) => {
 
   const onImageButtonClick = () => fileInputRef.current?.click();
 
-  const onFileChange = (e) => {
+  const onFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      alert('Please upload a valid image file.');
+      await showAlert({
+        title: "Image Upload Error",
+        description: "Please upload a valid image file.",
+      });
       e.target.value = null;
       return;
     }
@@ -66,7 +71,10 @@ const MenuBar = ({ editor }) => {
     reader.onload = (event) => {
       const base64 = event.target.result;
       if (!base64) {
-        alert('Failed to load image.');
+        showAlert({
+          title: "Image Upload Error",
+          description: "Failed to read the image file.",
+        });
         return;
       }
 

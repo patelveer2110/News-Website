@@ -17,7 +17,7 @@ const CommentDrawer = ({ isOpen, onClose, postId }) => {
           leaveTo="opacity-0"
         >
           <div
-            className="fixed inset-0 bg-black/30 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/30 dark:bg-black/50 backdrop-blur-sm"
             onClick={onClose}
           />
         </Transition.Child>
@@ -32,22 +32,26 @@ const CommentDrawer = ({ isOpen, onClose, postId }) => {
           leaveFrom="opacity-100 scale-100 translate-y-0"
           leaveTo="opacity-0 scale-95 translate-y-4"
         >
-         <Dialog.Panel
-  className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90%] sm:w-[400px] bg-base-100 dark:bg-gray-900 rounded-xl shadow-2xl p-4 z-50 max-h-[70vh] overflow-y-auto"
->
-
+          <Dialog.Panel
+            className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
+                       w-[90%] sm:w-[400px] max-h-[70vh] overflow-y-auto
+                       bg-base-100 dark:bg-base-100 rounded-xl shadow-2xl p-4 z-50"
+          >
             <div className="flex justify-between items-center mb-3">
-              <h2 className="text-lg font-bold text-base-content">Comments</h2>
+              <h2 className="text-lg font-bold text-base-content dark:text-base-content">
+                Comments
+              </h2>
               <button
-                className="btn btn-sm btn-circle btn-ghost"
+                className="btn btn-sm btn-circle btn-ghost text-base-content dark:text-base-content"
                 onClick={onClose}
                 aria-label="Close drawer"
               >
+                {/* Using fontawesome icon - make sure you have it installed */}
                 <i className="fas fa-times text-lg"></i>
               </button>
             </div>
 
-            <div className="divider m-0" />
+            <div className="divider m-0 dark:border-base-content/30" />
 
             <CommentSection
               postId={postId}

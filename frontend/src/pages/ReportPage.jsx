@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { backendURL } from '../App';
 import { adminAuth } from '../hooks/adminAuth';
-
+import { useConfirmDialog } from '../context/ConfirmDialogContext';
 const ReportPage = () => {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewType, setViewType] = useState('posts'); // 'posts' or 'comments'
   const [expandedReport, setExpandedReport] = useState(null);
-
+ const { showAlert,showConfirm } = useConfirmDialog();
   const { token } = adminAuth();
 
   const fetchReports = async () => {
@@ -53,18 +53,28 @@ const ReportPage = () => {
   }, [viewType]);
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this item?')) return;
+    const confirmed = await showConfirm({
+      title: 'Confirm Deletion',
+      description: `Are you sure you want to delete this ${viewType === 'posts' ? 'post' : 'comment'}? This action cannot be undone.`,
+    });
+    if (!confirmed) return;
 
     try {
       const url = viewType === 'posts' ? `/api/post/delete/${id}` : `/api/comment/delete/${id}`;
       await axios.delete(`${backendURL}${url}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      alert('Deleted successfully!');
+      showAlert({
+        title: 'Success',
+        description: viewType === 'posts' ? 'Post deleted successfully!' : 'Comment deleted successfully!',
+      });
       fetchReports();
     } catch (error) {
       console.error('Delete failed', error);
-      alert('Failed to delete');
+      showAlert({
+        title: 'Error',
+        description: error?.response?.data?.msg || 'Failed to delete item. Please try again.',
+      });
     }
   };
 

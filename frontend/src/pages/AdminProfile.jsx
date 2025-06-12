@@ -4,6 +4,7 @@ import PostCard from "../components/PostCard";
 import { backendURL } from "../App";
 import { useParams, useNavigate } from "react-router-dom";
 import { userAuth } from "../hooks/userAuth";
+import { useConfirmDialog } from "../context/ConfirmDialogContext";
 
 function formatCount(num) {
   if (num >= 1_000_000) return (num / 1_000_000).toFixed(1) + "M";
@@ -18,6 +19,7 @@ const AdminProfilePage = () => {
   const [posts, setPosts] = useState([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const { showConfirm } = useConfirmDialog();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -25,7 +27,9 @@ const AdminProfilePage = () => {
       setLoading(true);
       try {
         const [adminRes, postsRes] = await Promise.all([
-          axios.get(`${backendURL}/api/admin/profile/${adminId}`),
+          axios.get(`${backendURL}/api/admin/profile/${adminId}`, {
+            params: { userId },
+          }),
           axios.get(`${backendURL}/api/post/admin/${adminId}`),
         ]);
         setAdmin(adminRes.data);
@@ -43,9 +47,12 @@ const AdminProfilePage = () => {
   const handleFollowToggle = async () => {
     try {
       if (!token) {
-        const confirmLogin = window.confirm("You must be logged in to like. Do you want to login now?");
-        if (confirmLogin) {
-          window.location.href = "/login"; // or use useNavigate from react-router
+        const confirmed = await showConfirm({
+          title: "Login required",
+          description: "You must be logged in to follow/unfollow. Do you want to login now?",
+        });
+        if (confirmed) {
+          window.location.href = "/login"; // or navigate programmatically
         }
         return;
       }
@@ -67,7 +74,7 @@ const AdminProfilePage = () => {
 
   const handleEditProfile = () => {
     // Redirect to admin profile edit page
-    navigate(`/admin/edit-profile/${adminId}`);
+    navigate(`/edit-profile/${adminId}`);
   };
 
   if (loading || !admin) {

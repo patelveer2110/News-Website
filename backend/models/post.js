@@ -44,6 +44,16 @@ const postSchema = new mongoose.Schema({
         ref: 'User',
         default: [],
     },
+    seenBy: {
+        type: [mongoose.Schema.Types.ObjectId], // array of userIds
+        ref: 'User',
+        default: [],
+    },
+    rating: {
+  average: { type: Number, default: 0 },
+  count: { type: Number, default: 0 }
+},
+
     status: {
         type: String,
         enum: ['drafted', 'scheduled', 'published', 'unpublished'],

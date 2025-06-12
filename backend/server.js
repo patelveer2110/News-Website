@@ -9,11 +9,12 @@ import userRoute from './routes/userRoute.js';
 import adminRoute from './routes/adminRoute.js';
 import postRoute from './routes/postRoute.js';
 import commentRoute from './routes/commentRoute.js';
+import reviewRoute from './routes/reviewRoute.js'; // Importing the review route
 // Importing the required modules
 import PostModel from './models/post.js';
 import CommentModel from './models/comments.js';
-
-
+import AdminModel from './models/admin.js';
+import UserModel from './models/user.js';
 const app = express();
 dotenv.config();
 
@@ -26,39 +27,13 @@ connectCloudinary();
 
 const PORT = process.env.PORT || 5000;
 
-const postsWithBadLikes = await PostModel.find({ likes: { $type: "int" } });
 
-for (const post of postsWithBadLikes) {
-  console.log(`Fixing post with ID: ${post._id}`);
-  
-  post.likes = []; // reset to array
-  post.likesCount = 0;
-  await post.save();
-}
 
-// Import routes
-// const resetAllReportedBy = async (req, res) => {
-//   try {
-//     const result = await CommentModel.updateMany(
-//       {}, // match all documents
-//       { $set: { reportedBy: [] } }
-//     );
-
-//     // res.status(200).json({
-//     //   msg: "All reportedBy fields have been reset to empty arrays.",
-//     //   modifiedCount: result.modifiedCount,
-//     // });
-//   } catch (error) {
-//     // console.error("Error resetting reportedBy fields:", error);
-//     // res.status(500).json({ msg: "Server error", error });
-//   }
-
-// }
-// resetAllReportedBy();
 app.use('/api/user', userRoute);
 app.use('/api/admin', adminRoute);
 app.use('/api/post', postRoute);
 app.use('/api/comment', commentRoute);
+app.use('/api/review', reviewRoute); // Using the review route
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

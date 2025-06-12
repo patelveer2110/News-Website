@@ -6,7 +6,7 @@ export const userAuth = () => {
   const role = localStorage.getItem("role");
 
   if (!token || isTokenExpired(token)) {
-
+    logoutUser();
     return null;
   }
     const userId = JSON.parse(atob(token.split('.')[1])).id; // Decode JWT to get user ID

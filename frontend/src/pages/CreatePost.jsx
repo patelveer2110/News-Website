@@ -3,12 +3,13 @@ import TiptapEditor from "../components/TipTapEditor";
 import { backendURL } from "../App"; // Adjust the import path as necessary
 import axios from "axios";
 import { adminAuth } from "../hooks/adminAuth";
-import { useLocation } from "react-router-dom";
-
+import { useLocation, useNavigate } from "react-router-dom";
+import { useConfirmDialog } from "../context/ConfirmDialogContext"; // Adjust the import path as necessary
 
 
 
 const CreatePost = () => {
+  const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   // const [tags, setTags] = useState("");
@@ -20,6 +21,7 @@ const CreatePost = () => {
   const [content, setContent] = useState("");
   const [scheduledDate, setScheduledDate] = useState("");
   const [showScheduler, setShowScheduler] = useState(false);
+  const { showAlert } = useConfirmDialog();
   const { token, adminId } = adminAuth();
   const location = useLocation();
 const editingPost = location.state?.post;
@@ -59,13 +61,15 @@ const handleSubmit = async (status) => {
       },
     });
 
-    alert(
-      editingPost
-        ? "Post updated successfully!"
-        : status === "scheduled"
-        ? "Post scheduled successfully!"
-        : "Post created successfully!"
-    );
+    showAlert({
+  title: "Success",
+  description: editingPost
+    ? "Post updated successfully!"
+    : status === "scheduled"
+    ? "Post scheduled successfully!"
+    : "Post created successfully!",
+});
+
     // Reset fields
     setTitle("");
     setCategory("");
@@ -75,9 +79,13 @@ const handleSubmit = async (status) => {
     setContent("");
     setScheduledDate("");
     setShowScheduler(false);
+    navigate(`/admin/post`, { replace: true });
   } catch (err) {
     console.error(err);
-    alert("Failed to " + (editingPost ? "update" : "create") + " post.");
+    showAlert({
+      title: "Error",
+      description: err?.response?.data?.msg || "Failed to create post. Please try again.",
+    });
   }
 };
 

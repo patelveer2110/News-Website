@@ -1,11 +1,16 @@
 import React, { useState } from 'react';
+import { useConfirmDialog } from '../context/ConfirmDialogContext'; 
 
 const ReportReasonModal = ({ isOpen, onClose, onSubmit }) => {
   const [reason, setReason] = useState('');
-
-  const handleSubmit = () => {
+ const { showAlert } = useConfirmDialog();
+  const handleSubmit = async () => {
     if (!reason.trim()) {
-      window.alert("Please enter a valid reason.");
+      
+      await showAlert({
+        title: 'Error',
+        description: 'Please provide a reason for reporting.',
+      });
       return;
     }
     onSubmit(reason);

@@ -12,5 +12,5 @@ export const isTokenExpired = (token) => {
 export const logoutUser = () => {
   localStorage.removeItem("token");
   localStorage.removeItem("role");
-  window.location.href = "/login"; // or use react-router navigation
+  // window.location.href = "/login"; // or use react-router navigation
 };

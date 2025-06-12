@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 import { backendURL } from "../App";
-
+import { useConfirmDialog } from "../context/ConfirmDialogContext";
 const AdminListPage = () => {
   const { query } = useParams();
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [followLoading, setFollowLoading] = useState({});
   const [currentUserId, setCurrentUserId] = useState(null);
+  const { showAlert,showConfirm } = useConfirmDialog();
 
   useEffect(() => {
     const userIdFromStorage = localStorage.getItem("userId");
@@ -37,7 +38,14 @@ const AdminListPage = () => {
 
   const handleFollowToggle = async (adminId) => {
     if (!currentUserId) {
-      alert("Please login to follow/unfollow");
+      
+      const confirmed = await showConfirm({
+        title: "Login required",
+        description: "You must be logged in to like. Do you want to login now?",
+      });
+      if (confirmed) {
+        window.location.href = "/login"; // or navigate programmatically
+      }
       return;
     }
 
@@ -59,7 +67,10 @@ const AdminListPage = () => {
       );
     } catch (error) {
       console.error("Follow/unfollow failed", error);
-      alert("Failed to follow/unfollow");
+      await showAlert({
+        title: "Error",
+        description: error?.response?.data?.msg || "Failed to follow/unfollow admin.",
+      });
     } finally {
       setFollowLoading((prev) => ({ ...prev, [adminId]: false }));
     }

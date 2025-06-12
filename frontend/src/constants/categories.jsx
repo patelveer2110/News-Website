@@ -1,11 +1,11 @@
 const categories = [
-  "politics",
-  "technology",
-  "sports",
-  "entertainment",
-  "science",
-  "health",
-  "business",
+  "Politics",
+  "Technology",
+  "Sports",
+  "Entertainment",
+  "Science",
+  "Health",
+  "Business",
   "abc"
 ];
 

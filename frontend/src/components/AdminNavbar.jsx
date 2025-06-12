@@ -1,56 +1,46 @@
 import { useNavigate } from "react-router-dom";
+import { useContext } from "react";
 import { adminAuth } from "../hooks/adminAuth";
+import { ThemeContext } from "../context/ThemeContext";
+import { Sun, Moon, Menu } from "lucide-react";
 
 const AdminNavbar = () => {
-      const navigate = useNavigate();
-      const {adminId} =adminAuth()
-        const handleLogout = () => {
+  const navigate = useNavigate();
+  const { toggleTheme, theme } = useContext(ThemeContext);
 
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    console.log("User logged out");
+  const handleLogout = () => {
+    localStorage.clear();
     navigate("/login");
-    
   };
-    return (
-        <div className="navbar bg-base-100 shadow-sm">
-            <div className="navbar-start flex items-center  ">
-                <div className="dropdown">
-                    <div tabIndex={0} role="button" className="btn btn-ghost lg:hidden">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h8m-8 6h16" /> </svg>
-                    </div>
-                    <ul
-                        tabIndex={0}
-                        className="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow">
-                        <li><a href="/admin/dashboard">Home</a></li>
-                        <li><a href="/admin/post">Posts</a></li>
-                        <li><a href="/admin/reports">Reports</a></li>
-                        <li><a onClick={handleLogout} className="btn">LogOut</a></li>
-                    </ul>
-                </div>
-                    <a className="btn btn-ghost text-xl hidden lg:inline-block">AdminPanel</a>
-                
-                {/* <a className="btn btn-ghost text-xl  lg:hidden">AdminPanel</a> */}
-            </div>
-             <div className="navbar-center lg:hidden">
-    <a className="btn btn-ghost text-xl">AdminPanel</a>
-  </div>
-            <div className="navbar-center hidden lg:flex">
-                <ul className="menu menu-horizontal px-1">
-                    <li><a href="/admin/dashboard">Home</a></li>
-                    <li><a href="/admin/post">Posts</a></li>
-                    <li><a href="/admin/reports">Reports</a></li>
-                    <li><a href={`/admin/profile/${adminId}`}>Profile</a></li>
 
-                </ul>
-            </div>
-            <div className="navbar-end hidden lg:flex">
-                <a onClick={handleLogout} className="btn">LogOut</a>
-            </div>
-            {/* <div className="navbar-end">
-                <a className="btn">LogIn</a>
-            </div> */}
-        </div>
-    );
-}
+  return (
+    <div className="navbar bg-base-300 shadow-sm px-4 flex justify-between items-center">
+  <div className="flex-none lg:hidden">
+    <label htmlFor="admin-drawer" className="btn btn-square btn-ghost">
+      <Menu className="w-6 h-6" />
+    </label>
+  </div>
+
+  <div className="flex-1 flex justify-center">
+    <a href="/admin/dashboard" className="btn btn-ghost text-2xl font-bold">
+      AdminPanel
+    </a>
+  </div>
+
+  <div className="flex-none flex gap-3 items-center">
+    <label className="swap swap-rotate cursor-pointer">
+      <input type="checkbox" onChange={toggleTheme} />
+      <Moon className="swap-on w-6 h-6 text-gray-700" />
+      <Sun className="swap-off w-6 h-6 text-blue-400" />
+    </label>
+
+    <button onClick={handleLogout} className="btn btn-outline btn-sm">
+      Logout
+    </button>
+  </div>
+</div>
+
+  );
+};
+
 export default AdminNavbar;

@@ -2,6 +2,8 @@ import PostModel from "../models/post.js";
 import CommentModel from "../models/comments.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
+import UserModel from "../models/user.js";
+import AdminModel from "../models/admin.js";
 import { v2 as cloudinary } from "cloudinary";
 import { log } from "console";
 
@@ -76,28 +78,42 @@ console.log("gfds");
 };
 
 const updatePost = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { title, content, category, tags } = req.body;
-        if (req.file && req.file.path) {
+  try {
+    const { id } = req.params;
+    const { title, content, category, tags } = req.body;
+
+    // console.log("Update post called with ID:", id);
+    // console.log("Request body:", req.body);
+
+    // Build update object dynamically
+    const updateFields = {
+      title,
+      content,
+      category,
+      tags,
+    };
+
+    if (req.file && req.file.path) {
       updateFields.bannerImage = req.file.path;
     }
 
-        const updatedPost = await PostModel.findByIdAndUpdate(
-            id,
-            { title, content, category, tags, bannerImage },
-            { new: true }
-        );
+    const updatedPost = await PostModel.findByIdAndUpdate(
+      id,
+      updateFields,
+      { new: true }
+    );
 
-        if (!updatedPost) {
-            return res.status(404).json({ message: "Post not found" });
-        }
-
-        res.status(200).json({ message: "Post updated successfully", post: updatedPost });
-    } catch (error) {
-        res.status(500).json({ message: "Server error", error });
+    if (!updatedPost) {
+      return res.status(404).json({ message: "Post not found" });
     }
-}
+
+    res.status(200).json({ message: "Post updated successfully", post: updatedPost });
+  } catch (error) {
+    console.error("Error in updatePost:", error);
+    res.status(500).json({ message: "Server error", error });
+  }
+};
+
 
 const deletePost = async (req, res) => {
     try {
@@ -120,6 +136,7 @@ const updatePostStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
+    
     const updatedPost = await PostModel.findByIdAndUpdate(
       id,
       { status },
@@ -138,68 +155,137 @@ const updatePostStatus = async (req, res) => {
 
 const getPosts = async (req, res) => {
   try {
-    const { category } = req.query;  // note: use query param instead of params for flexibility
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const {
+      category,
+      page = 1,
+      limit = 10,
+      sort = "latest",
+      userId
+    } = req.query;
+
     const skip = (page - 1) * limit;
     const now = new Date();
 
-    // Build filter object dynamically
-    let filter = {
-      status: 'published',
-      publishedAt: { $lte: now }
+    // Define sort logic
+    let sortField = "publishedAt";
+    let sortObject = { [sortField]: -1 };
+
+    if (sort === "liked") sortObject = { likesCount: -1 };
+    else if (sort === "viewed") sortObject = { viewCount: -1 };
+    else if (sort === "rated") sortObject = { "rating.average": -1 };
+
+    // Base filter
+    const baseFilter = {
+      status: "published",
+      publishedAt: { $lte: now },
+      ...(category && category !== "All" ? { category } : {})
     };
-    if (category && category !== 'All') {
-      filter.category = category;
+
+    let followedIds = [];
+    let userObjectId = null;
+
+    if (userId) {
+      const user = await UserModel.findById(userId).select("following");
+      followedIds = user?.following.map(id => id.toString()) || [];
+      userObjectId = new mongoose.Types.ObjectId(userId);
     }
 
-    const posts = await PostModel.find(filter)
+    const followedSet = new Set(followedIds);
+
+    // Fetch posts
+    const allPosts = await PostModel.find(baseFilter)
       .populate("createdBy", "username profileImage")
-      .skip(skip)
-      .limit(limit)
-      .sort({ publishedAt: -1 });
+      .sort(sortObject);
 
-    if (!posts || posts.length === 0) {
-      return res.status(200).json({ message: "No more posts found" });
+    let paginated = [];
+    let label = "No posts found";
+
+    if (sort === "latest") {
+      const grouped = {
+        unseen_followed: [],
+        unseen_unfollowed: [],
+        seen_followed: [],
+        seen_unfollowed: [],
+      };
+
+      allPosts.forEach((post) => {
+        const createdById = post.createdBy._id.toString();
+        const isFollowed = followedSet.has(createdById);
+        const isSeen = post.seenBy?.some((id) => id.toString() === userId);
+
+        if (!isSeen && isFollowed) grouped.unseen_followed.push(post);
+        else if (!isSeen && !isFollowed) grouped.unseen_unfollowed.push(post);
+        else if (isSeen && isFollowed) grouped.seen_followed.push(post);
+        else grouped.seen_unfollowed.push(post);
+      });
+
+      const mergedPosts = [
+        ...grouped.unseen_followed,
+        ...grouped.unseen_unfollowed,
+        ...grouped.seen_followed,
+        ...grouped.seen_unfollowed,
+      ];
+
+      paginated = mergedPosts.slice(skip, skip + parseInt(limit));
+
+      if (grouped.unseen_followed.length) label = "Unseen posts from people you follow";
+      else if (grouped.unseen_unfollowed.length) label = "Unseen posts from others";
+      else if (grouped.seen_followed.length) label = "Posts you've already seen from people you follow";
+      else if (grouped.seen_unfollowed.length) label = "Posts you've already seen from others";
+
+    } else {
+      // Regular sorting, no grouping
+      paginated = allPosts.slice(skip, skip + parseInt(limit));
+      label = `Sorted by ${sort}`;
     }
 
-    res.status(200).json(posts);
+    return res.status(200).json({
+      label,
+      posts: paginated
+    });
+
   } catch (error) {
     console.error("Error in getPosts:", error);
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+
+const getPostById = async (req, res) => {
+  try {
+    // console.log("getPostById called");
+
+    const { id } = req.params;
+    const { view, userId } = req.query;
+    console.log(req.query);
+    
+    const post = await PostModel.findById(id).populate("createdBy", "username profileImage");
+console.log(userId);
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    if (view === "true") {
+      post.views += 1;
+
+      if (userId && !post.seenBy.includes(userId)) {
+        post.seenBy.push(userId);
+        console.log(post.seenBy);
+        
+      }
+
+      await post.save();
+    }
+
+    res.status(200).json(post);
+  } catch (error) {
+    console.error("Error in getPostById:", error);
     res.status(500).json({ message: "Server error", error });
   }
 };
 
-const getPostById = async (req, res) => {
-    try {
-        console.log("getPostById called");
-        
-        const { id } = req.params;
-        const {view} =  req.query;
-        console.log(view);
-        
-        const post = await PostModel.findById(id).populate("createdBy", "username profileImage");
-        if (!post) {
-            return res.status(404).json({ message: "Post not found" });
-        }
-        console.log("Post found:", post);
-        if (view==='true') {
-            console.log("view");
-            
-            post.views += 1;
-        }
-        console.log("Incrementing post views:", post.views);
-        log("Post before saving:", post);
-        await post.save();
-        log("Post after saving:", post);
-        console.log("Post fetched:", post);
-        res.status(200).json(post);
-    }
-    catch (error) {
-        log("Error in getPostById:", error);
-        res.status(500).json({ message: "Server error", error });
-    }
-}
 const likePost = async (req, res) => {
     try {
         const { id } = req.params;
@@ -291,6 +377,7 @@ const getPostByAdminId = async (req, res) => {
     try {
         const {id} = req.params ;
         const adminID =id// Assuming adminID is set in the request by authentication middleware
+        console.log("getPostByAdminId called with adminID:", adminID);
         if (!adminID) {
             return res.status(401).json({ message: "Unauthorized" });
         }
@@ -298,11 +385,17 @@ const getPostByAdminId = async (req, res) => {
         const posts = await PostModel.find({ 
             createdBy: adminID,
         }).populate("createdBy", "username profileImage");
-        if (!posts || posts.length === 0) {
-            return res.status(404).json({ message: "No posts found for this admin" });
-        }
+        // if (!posts || posts.length === 0) {
+        //   console.log("No posts found for this admin:", adminID);
+          
+        //     return res.status(404).json({ message: "No posts found for this admin" });
+        // }
+        console.log("Posts found:", posts.length);
+        
         res.status(200).json(posts);
     } catch (error) {
+      console.log("Error in getPostByAdminId:", error);
+      
         res.status(500).json({ message: "Server error", error });
     }
 }

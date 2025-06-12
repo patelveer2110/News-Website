@@ -1,138 +1,195 @@
 import AdminModel from "../models/admin.js";
 import PostModel from "../models/post.js";
+import UserModel from "../models/user.js";
 import { v2 as cloudinary } from "cloudinary";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import { log } from "console";
+import { sendEmail } from "../utils/sendEmail.js";
 
-const adminRegister = async (req, res, next) => {
-    try {
-        console.log("Admin Register Request");
-        
-        console.log("REQ BODY:", req.body);
-        console.log("REQ FILE:", req.file);
-        if (!req.body || !req.file) {
-            return res.status(400).json({ message: "Missing fields or image in form-data." });
-        }
-        const { username, email, password } = req.body;
-        const image = req.file.path;
+// imp/ort { adminOtpStore } from "../utils/adminOtpStore.js";
+const adminOtpStore = new Map();
+const adminRegister = async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+    const image = req.file?.path;
 
-        console.log("Admin Register Request", req.body);
-        console.log("Image Path", image);
-        console.log("Admin Register", username, email, password);
-        const existingAdmin = await AdminModel.findOne({ email });
-        if (existingAdmin) {
-            return res.status(400).json({ message: "Admin already exists" });
-        }
-        const existingUsername = await AdminModel.findOne({ username });
-        if (existingUsername) {
-            return res.status(400).json({ message: "Username is already taken" });
-        }
-
-       const profileImage = await cloudinary.uploader.upload(image, {
-
-            folder: "blog",
-            use_filename: true,
-        });
-        const profileImageUrl = profileImage.secure_url;
-        
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const newAdmin = new AdminModel({ username, email, password: hashedPassword,
-            //  profileImage: profileImageUrl 
-            });
-        console.log("New Admin", newAdmin);
-        await newAdmin.save();
-        const token = jwt.sign({ id: newAdmin._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
-        console.log("Admin registered successfully", newAdmin);
-        console.log("Token", token);
-        res.status(201).json({ message: "Admin registered successfully", token });
+    if (!image) {
+      return res.status(400).json({ message: "Profile image is required" });
     }
-    catch (error) {
-        res.status(500).json({ message: "Server error", error : error.message });
-    }
-}
 
+    const existing = await AdminModel.findOne({ email });
+    if (existing) return res.status(400).json({ message: "Admin already exists" });
+
+    const existingUsername = await AdminModel.findOne({ username });
+    if (existingUsername) return res.status(400).json({ message: "Username already taken" });
+
+    const uploadedImage = await cloudinary.uploader.upload(image, {
+      folder: "admin-profiles",
+      use_filename: true,
+    });
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 5 * 60 * 1000;
+
+    // Store temp data until OTP is verified
+    adminOtpStore.set(email, {
+      otp,
+      expiresAt,
+      username,
+      password,
+      profileImage: uploadedImage.secure_url,
+    });
+    console.log("OTP Store:", adminOtpStore);
+    
+    await sendEmail(email, "Verify your admin account", `Your OTP is: ${otp}`);
+console.log("OTP sent to email:", email, "with OTP:", otp);
+
+    res.status(200).json({ message: "OTP sent to email" });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to register admin", error: err.message });
+  }
+};
+const verifyAdminOtpAndCreate = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    const record = adminOtpStore.get(email);
+
+    if (!record) return res.status(400).json({ message: "OTP not requested" });
+
+    const { otp: realOtp, expiresAt, username, password } = record;
+
+    if (Date.now() > expiresAt) {
+      adminOtpStore.delete(email);
+      return res.status(400).json({ message: "OTP expired" });
+    }
+
+    if (otp !== realOtp) return res.status(400).json({ message: "Invalid OTP" });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newAdmin = new AdminModel({ username, email, password: hashedPassword });
+    await newAdmin.save();
+
+    adminOtpStore.delete(email);
+
+    const token = jwt.sign({ id: newAdmin._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
+    res.status(201).json({ message: "Admin registered successfully", token });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
 const adminLogin = async (req, res) => {
-    try {
-        const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
+    const admin = await AdminModel.findOne({ email });
+    if (!admin) return res.status(400).json({ message: "Admin Not Found" });
 
-        const admin = await AdminModel
-            .findOne({ email });
-        if (!admin) {
-            return res.status(400).json({ message: "Admin Not Found" });
-        }
-        const isMatch = await bcrypt.compare(password, admin.password);
-        if (!isMatch) {
-            return res.status(400).json({ message: "Invalid credentials" });
-        }
-        const token = jwt.sign({ id: admin._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
-        console.log("Admin logged in successfully", admin);
-        
-        res.status(200).json({ message: "Admin logged in successfully", token });
-    }
+    const isMatch = await bcrypt.compare(password, admin.password);
+    if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
 
-    catch (error) {
-        res.status(500).json({ message: "Server error", error });
-    }
-}
+    const token = jwt.sign({ id: admin._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
+
+    res.status(200).json({ message: "Admin logged in successfully", token });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
+};
+
 
 const adminProfile = async (req, res) => {
-    try {
-        const {adminId } = req.params;
-         // Extracting adminId from request parameters
-        console.log("Fetching admin profile for ID:", adminId);
-         // Assuming adminID is set in the request by authentication middleware
-        if (!adminId) {
-            return res.status(401).json({ message: "Unauthorized" });
-        }
-        console.log("Fetching admin profile for ID:", adminId);
-        
-        const admin = await AdminModel.findById(adminId);
-        if (!admin) {
-            return res.status(404).json({ message: "Admin not found" });
-        }
-        res.status(200).json(admin);
-    } catch (error) {
-        res.status(500).json({ message: "Server error", error });
+  try {
+    const { adminId } = req.params;
+    const { userId } = req.query;
+
+    if (!adminId) {
+      return res.status(400).json({ message: "Admin ID is required" });
     }
-}
+
+    const admin = await AdminModel.findById(adminId).select("-password").lean();
+    if (!admin) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
+
+    const followersCount = admin.followers?.length || 0;
+
+    let isFollowing = false;
+    if (userId) {
+      isFollowing = admin.followers?.some(id => id.toString() === userId);
+    }
+
+    res.status(200).json({
+      ...admin,
+      followersCount,
+      isFollowing,
+    });
+  } catch (error) {
+    console.error("Error fetching admin profile:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 
 const followUnfollowAdmin = async (req, res) => {
-    try {
-        const { adminId } = req.params; // Extracting adminId from request parameters
-        const userId = req.userID; // Assuming userId is set in the request by authentication middleware
-        console.log("followUnfollowAdmin called with adminId:", adminId, "and userId:", userId);
-        if (!userId) {
-            return res.status(401).json({ message: "Unauthorized" });
-        }
+  try {
+    const { adminId } = req.params;
+    const userId = req.userID; // From authentication middleware
 
-        const admin = await AdminModel.findById(adminId);
-
-        if (!admin) {
-            return res.status(404).json({ message: "Admin not found" });
-        }
-       console.log("Admin found:", admin.followers);
-
-        if (admin.followers.includes(userId)) {
-            // Unfollow
-            admin.followers = admin.followers.filter(id => id.toString() !== userId.toString());
-        } else {
-            // Follow
-            admin.followers.push(userId);
-        }
-
-        await admin.save();
-        res.status(200).json({ message: "Follow/Unfollow action successful", admin });
-    } catch (error) {
-        res.status(500).json({ message: "Server error", error });
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
     }
-}
+
+    const [admin, user] = await Promise.all([
+      AdminModel.findById(adminId),
+      UserModel.findById(userId)
+    ]);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!admin) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
+
+    const isFollowing = admin.followers.includes(userId);
+
+    if (isFollowing) {
+      // Unfollow
+      admin.followers = admin.followers.filter(id => id.toString() !== userId.toString());
+      user.following = user.following.filter(id => id.toString() !== adminId.toString());
+      console.log("Unfollowing admin:", adminId, "by user:", userId);
+      console.log("Updated followers:", admin.followers);
+      console.log("Updated following:", user.following);
+      
+    } else {
+      // Follow
+      admin.followers.push(userId);
+      user.following.push(adminId);
+      console.log("following admin:", adminId, "by user:", userId);
+      console.log("Updated followers:", admin.followers);
+      console.log("Updated following:", user.following);
+    }
+
+    await Promise.all([admin.save(), user.save()]);
+
+    res.status(200).json({
+      message: isFollowing ? "Unfollowed successfully" : "Followed successfully",
+      admin
+    });
+
+  } catch (error) {
+    console.error("Error in followUnfollowAdmin:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 const updateProfile = async (req, res) => {
     try {
-        const { adminId } = req.params;
-        const userId = req.userID;
+        // const { adminId } = req.params;
+        const adminId = req.adminID;
 
-        if (!userId || userId !== adminId) {
+        if ( !adminId) {
             return res.status(403).json({ message: "Unauthorized: cannot edit others' profiles" });
         }
 
@@ -261,4 +318,4 @@ const searchAdminProfiles = async (req, res) => {
     res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
-export { adminRegister, adminLogin, adminProfile,followUnfollowAdmin,updateProfile , getAllAdmins, searchAdminProfiles };
+export { adminRegister, adminLogin, verifyAdminOtpAndCreate, adminProfile,followUnfollowAdmin,updateProfile , getAllAdmins, searchAdminProfiles };

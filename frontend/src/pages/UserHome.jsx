@@ -3,69 +3,66 @@ import axios from 'axios';
 import PostCard from '../components/PostCard';
 import { backendURL } from '../App';
 import categories from '../constants/categories';
+import { userAuth } from '../hooks/userAuth'; // assuming this gives you userId
 
-// Spinner component using Tailwind CSS
 const Spinner = () => (
   <div className="flex justify-center py-4">
     <div className="w-8 h-8 border-4 border-blue-500 border-dashed rounded-full animate-spin"></div>
   </div>
 );
 
+const sortOptions = [
+  { label: "Latest", value: "latest" },
+  { label: "Most Liked", value: "liked" },
+  { label: "Most Viewed", value: "viewed" },
+  { label: "Most Rated", value: "rated" },
+];
+
 const UserHome = () => {
+  const { userId } = userAuth();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [sort, setSort] = useState("latest");
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  // Refs to hold latest loading and hasMore states for scroll event
   const loadingRef = useRef(loading);
   const hasMoreRef = useRef(hasMore);
 
-  useEffect(() => {
-    loadingRef.current = loading;
-  }, [loading]);
+  useEffect(() => { loadingRef.current = loading }, [loading]);
+  useEffect(() => { hasMoreRef.current = hasMore }, [hasMore]);
 
-  useEffect(() => {
-    hasMoreRef.current = hasMore;
-  }, [hasMore]);
-
-const fetchPosts = async (pageNum = 1, reset = false) => {
+  const fetchPosts = async (pageNum = 1, reset = false) => {
   setLoading(true);
   try {
-    // Dynamic limit based on screen width
-    let limit = 3; // default for small screens
+    let limit = 3;
+    if (window.innerWidth >= 1024) limit = 9;
+    else if (window.innerWidth >= 640) limit = 6;
 
-    if (window.innerWidth >= 1024) { // large screens (lg)
-      limit = 9;
-    } else if (window.innerWidth >= 640) { // medium screens (sm/md)
-      limit = 6;
-    }
+    const params = {
+      page: pageNum,
+      limit,
+      sort,
+      userId,
+    };
 
-    const params = { page: pageNum, limit };
-
-    if (selectedCategory !== "All") {
-      params.category = selectedCategory;
-    }
+    if (selectedCategory !== "All") params.category = selectedCategory;
 
     const res = await axios.get(`${backendURL}/api/post`, { params });
 
-    if (Array.isArray(res.data)) {
-      if (reset) {
-        setPosts(res.data);
-      } else {
-        setPosts((prev) => [...prev, ...res.data]);
-      }
+    const { label, posts: newPosts = [] } = res.data;
 
-      if (res.data.length < params.limit) {
-        setHasMore(false);
-      } else {
-        setHasMore(true);
-      }
+    // Optional: Display label somewhere in your UI
+    // setSectionLabel?.(label); // Only if you have this hook or prop
+
+    if (reset) {
+      setPosts(newPosts);
     } else {
-      if (reset) setPosts([]);
-      setHasMore(false);
+      setPosts((prev) => [...prev, ...newPosts]);
     }
+
+    setHasMore(newPosts.length >= limit);
   } catch (err) {
     console.error("Failed to fetch posts:", err);
     setHasMore(false);
@@ -75,28 +72,22 @@ const fetchPosts = async (pageNum = 1, reset = false) => {
 };
 
 
-
-  // Reset posts on category change
   useEffect(() => {
     setPage(1);
     setHasMore(true);
     fetchPosts(1, true);
-  }, [selectedCategory]);
+  }, [selectedCategory, sort]);
 
-  // Fetch posts when page changes (except for first page handled above)
   useEffect(() => {
     if (page !== 1) {
       fetchPosts(page);
     }
   }, [page]);
 
-  // Infinite scroll with debounce and stable refs
   useEffect(() => {
     let debounceTimeout = null;
-
     const handleScroll = () => {
       if (debounceTimeout) clearTimeout(debounceTimeout);
-
       debounceTimeout = setTimeout(() => {
         if (
           window.innerHeight + window.scrollY >= document.body.offsetHeight - 100 &&
@@ -117,19 +108,29 @@ const fetchPosts = async (pageNum = 1, reset = false) => {
 
   return (
     <div className="p-4 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
-        <h1 className="text-2xl font-bold mb-2 sm:mb-0">Latest News</h1>
-        <div className="w-full sm:w-64">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+        <h1 className="text-2xl font-bold">Latest News</h1>
+        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
           <select
-            id="categories"
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="select select-sm select-bordered w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl"
+            className="select select-sm select-bordered w-full"
           >
             <option value="All">All Categories</option>
             {categories.map((category) => (
               <option key={category} value={category}>
                 {category}
+              </option>
+            ))}
+          </select>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            className="select select-sm select-bordered w-full"
+          >
+            {sortOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
               </option>
             ))}
           </select>
@@ -145,7 +146,7 @@ const fetchPosts = async (pageNum = 1, reset = false) => {
           </div>
           {loading && <Spinner />}
           {!hasMore && (
-            <div className="text-center text-gray-400 mt-4">No more posts.</div>
+            <div className="text-center text-base-content/60 mt-4">No more posts.</div>
           )}
         </>
       ) : (

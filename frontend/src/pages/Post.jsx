@@ -5,6 +5,7 @@ import axios from "axios";
 import CommentSection from "../components/CommentSection";
 import { userAuth } from "../hooks/userAuth";
 import ReportReasonModal from "../components/ReportReasonModal";
+import { useConfirmDialog } from "../context/ConfirmDialogContext";
 
 const Post = () => {
   const { id } = useParams();
@@ -12,13 +13,19 @@ const Post = () => {
   const [loading, setLoading] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-
-  const { token, userId, role } = userAuth() ||{};
+  const [isLiking, setIsLiking] = useState(false);
+  const [likesCount, setLikesCount] = useState(0);
+  const { showConfirm, showAlert } = useConfirmDialog();
+  const { token, userId, role } = userAuth() || {};
 
   const fetchPost = async () => {
     try {
-      const viewParam = role === 'user' ? "true" : "false";
-      const response = await axios.get(`${backendURL}/api/post/${id}?view=${viewParam}`);
+      const viewParam = role === "user" ? "true" : "false";
+      console.log(userId);
+      
+      // ✅ Correct
+const response = await axios.get(`${backendURL}/api/post/${id}?view=${viewParam}&userId=${userId}`);
+
       setPost(response.data);
       if (userId) {
         setIsLiked(response.data.likes.includes(userId));
@@ -30,33 +37,65 @@ const Post = () => {
     }
   };
 
-  const toggleLike = async () => {
+  const toggleLike = async (e) => {
+    e.preventDefault();
+    if (!token) {
+      const confirmed = await showConfirm({
+        title: "Login required",
+        description: "You must be logged in to like. Do you want to login now?",
+      });
+      if (confirmed) {
+        window.location.href = "/login";
+      }
+      return;
+    }
+    if (isLiking) return;
+    setIsLiking(true);
     try {
       const response = await axios.put(
-        `${backendURL}/api/post/like/${id}`,
+        `${backendURL}/api/post/like/${post._id}`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setPost(response.data.post);
-      setIsLiked(response.data.post.likes.includes(userId));
+      const updatedLikes = response.data.post.likes;
+      setIsLiked(updatedLikes.some((id) => id.toString() === userId));
+      setLikesCount(updatedLikes.length);
     } catch (error) {
       console.error("Error liking post:", error);
+      await showAlert({
+        title: "Error",
+        description: "Failed to like the post. Please try again.",
+      });
+    } finally {
+      setIsLiking(false);
     }
   };
 
   const handleReportPost = async (reason) => {
-    if (!reason.trim()) return alert("Reason is required");
+    if (!reason.trim()) {
+      showAlert({
+        title: "Report Error",
+        description: "Please provide a reason for reporting this post.",
+      });
+      return;
+    }
     try {
       const response = await axios.post(
         `${backendURL}/api/post/report/${id}`,
         { reason },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      alert(response.data.msg);
+      showAlert({
+        title: "Reported",
+        description: response.data.msg || "Post reported successfully.",
+      });
       setIsReportModalOpen(false);
     } catch (error) {
       const msg = error?.response?.data?.msg || "Error reporting post.";
-      alert(msg);
+      showAlert({
+        title: "Report Error",
+        description: msg,
+      });
       console.error("Report Post Error:", error);
     }
   };
@@ -74,6 +113,19 @@ const Post = () => {
         <div>
           <h1 className="text-3xl font-bold">{post.title}</h1>
           <p className="text-gray-600">{post.category || "Article"}</p>
+
+          {/* Average Rating Display */}
+          <div className="flex items-center gap-2 text-yellow-500 mt-2 text-sm">
+            <i className="fas fa-star" />
+            {post.rating?.count > 0 ? (
+              <span>
+                {post.rating.average.toFixed(1)} / 5 ({post.rating.count} rating
+                {post.rating.count > 1 ? "s" : ""})
+              </span>
+            ) : (
+              <span>No ratings yet</span>
+            )}
+          </div>
         </div>
 
         {role === "user" && userId !== post.createdBy?._id && (
@@ -103,14 +155,15 @@ const Post = () => {
         </div>
 
         <div className="flex items-center gap-4">
-          {role === "user" && (
+          {role !== "admin" && (
             <button
               onClick={toggleLike}
+              disabled={isLiking}
               className={`btn btn-sm gap-2 transition-all duration-200 ${
-                isLiked
-                  ? "bg-blue-500 text-white border-none hover:bg-blue-600"
-                  : "btn-outline text-gray-600"
-              }`}
+                isLiked ? "btn-primary" : "btn-outline"
+              } ${isLiking ? "opacity-60 cursor-not-allowed" : ""}`}
+              aria-pressed={isLiked}
+              aria-label={isLiked ? "Unlike post" : "Like post"}
             >
               <i className={`fas fa-thumbs-up ${isLiked ? "animate-ping-slow" : ""}`}></i>
               {post.likes.length}
@@ -150,8 +203,8 @@ const Post = () => {
             ))}
         </div>
       </div>
-      <h3 className="text-xl font-semibold mb-2">Comments</h3>
 
+      <h3 className="text-xl font-semibold mb-2">Comments</h3>
       <CommentSection postId={id} />
 
       {/* Report Modal */}
