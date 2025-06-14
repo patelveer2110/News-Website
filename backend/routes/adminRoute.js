@@ -1,4 +1,4 @@
-import { adminLogin, adminRegister, verifyAdminOtpAndCreate, adminProfile, followUnfollowAdmin, searchAdminProfiles,getAllAdmins,updateProfile } from "../controllers/adminController.js";
+import { adminLogin, adminRegister, verifyAdminOtpAndCreate, forgotAdminPassword,resetAdminPassword, adminProfile, followUnfollowAdmin, searchAdminProfiles,getAllAdmins,updateProfile } from "../controllers/adminController.js";
 import express from "express";
 import fileUpload from "../middleware/multer.js";
 import { userAuth } from "../middleware/userAuth.js";
@@ -7,6 +7,8 @@ const adminRoute = express.Router();
 // Admin registration route
 adminRoute.post("/register", fileUpload.single("image"), adminRegister);
 adminRoute.post("/verify-otp", verifyAdminOtpAndCreate);
+adminRoute.post("/forgot-password", forgotAdminPassword);
+adminRoute.post("/reset-password", resetAdminPassword);
 // Admin login route
 adminRoute.post("/login", adminLogin);
 

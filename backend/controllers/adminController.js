@@ -80,22 +80,81 @@ const verifyAdminOtpAndCreate = async (req, res) => {
 };
 const adminLogin = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { emailOrUsername, password } = req.body;
 
-    const admin = await AdminModel.findOne({ email });
-    if (!admin) return res.status(400).json({ message: "Admin Not Found" });
+    // Find admin by email OR username
+    const admin = await AdminModel.findOne({
+      $or: [{ email: emailOrUsername }, { username: emailOrUsername }],
+    });
+
+    if (!admin)
+      return res.status(400).json({ message: "Admin not found" });
 
     const isMatch = await bcrypt.compare(password, admin.password);
-    if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
+    if (!isMatch)
+      return res.status(400).json({ message: "Invalid credentials" });
 
-    const token = jwt.sign({ id: admin._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
+    const token = jwt.sign({ id: admin._id }, process.env.JWT_SECRET, {
+      expiresIn: "1d",
+    });
 
     res.status(200).json({ message: "Admin logged in successfully", token });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
+
+const forgotAdminPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const admin = await AdminModel.findOne({ email });
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 5 * 60 * 1000;
+
+    adminOtpStore.set(email, {
+      otp,
+      expiresAt,
+      type: "reset-password", // optional identifier
+    });
+
+    await sendEmail(email, "Reset Admin Password", `Your OTP is: <b>${otp}</b>`);
+
+    res.status(200).json({ message: "OTP sent to your email" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+const resetAdminPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    const record = adminOtpStore.get(email);
+
+    if (!record || record.otp !== otp || Date.now() > record.expiresAt) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const updatedAdmin = await AdminModel.findOneAndUpdate(
+      { email },
+      { password: hashedPassword },
+      { new: true }
+    );
+
+    if (!updatedAdmin) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
+
+    adminOtpStore.delete(email);
+
+    res.status(200).json({ message: "Password reset successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
 
 const adminProfile = async (req, res) => {
   try {
@@ -318,4 +377,4 @@ const searchAdminProfiles = async (req, res) => {
     res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
-export { adminRegister, adminLogin, verifyAdminOtpAndCreate, adminProfile,followUnfollowAdmin,updateProfile , getAllAdmins, searchAdminProfiles };
+export { adminRegister, adminLogin, verifyAdminOtpAndCreate, forgotAdminPassword,resetAdminPassword, adminProfile,followUnfollowAdmin,updateProfile , getAllAdmins, searchAdminProfiles };

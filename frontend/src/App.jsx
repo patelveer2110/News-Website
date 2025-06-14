@@ -111,7 +111,6 @@ function App() {
         <Route path="/admin/post" element={<AdminPosts />} />
         <Route path="/admin/reports" element={<ReportPage />} />
         <Route path="/admin/profile/:adminId" element={<AdminProfilePage />} />
-        <Route path="/admin/profile-search/:query" element={<AdminListPage />} />
 
         {/* User Routes (Guest + Authenticated) */}
         <Route path="/edit-profile/:id" element={<EditProfile />} />
@@ -119,6 +118,7 @@ function App() {
         <Route path="/post/:id" element={<Post />} />
         <Route path="/tag/:tag" element={<TagPage />} />
         <Route path="/user/profile/:userId" element={<UserProfile />} />
+        <Route path="/profile-search/:query" element={<AdminListPage />} />
 
         {/* Fallback */}
         <Route path="*" element={<NotFound />} />

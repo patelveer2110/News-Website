@@ -72,10 +72,12 @@ const AdminHome = () => {
     .sort((a, b) => (b.likesCount || 0) - (a.likesCount || 0))
     .slice(0, 3), [filteredPosts]);
 
-  const topRatedPosts = useMemo(() => [...filteredPosts]
-    .filter(p => typeof p.rating === "number")
-    .sort((a, b) => b.rating - a.rating)
-    .slice(0, 3), [filteredPosts]);
+  const topRatedPosts = useMemo(() => {
+  const valid = [...filteredPosts].filter(p => typeof p.rating.average === "number");
+  console.log("Posts with valid ratings", valid);
+  return valid.sort((a, b) => b.rating.average - a.rating.average).slice(0, 3);
+}, [filteredPosts]);
+
 
   const handleFilterRedirect = (filter) => {
     navigate(`/admin/post${filter ? `?status=${filter}` : ""}`);
@@ -213,7 +215,7 @@ const AdminHome = () => {
         <ul className="bg-base-200 p-4 rounded-xl shadow divide-y divide-base-300">
           {topRatedPosts.length > 0
             ? topRatedPosts.map(post => (
-              <PostCard key={post._id} post={post} icon="⭐" label={`${post.rating.toFixed(1)} / 5`} />
+              <PostCard key={post._id} post={post} icon="⭐" label={`${post.rating.average.toFixed(1)} / 5`} />
             ))
             : <p className="italic text-base-content/60">No rated posts yet.</p>}
         </ul>

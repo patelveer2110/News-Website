@@ -19,7 +19,7 @@ const sortOptions = [
 ];
 
 const UserHome = () => {
-  const { userId } = userAuth();
+  const { userId } = userAuth() || {};
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("All");

@@ -26,7 +26,7 @@ console.log(userId);
       const tag = trimmed.slice(1);
       navigate(`/tag/${tag}`);
     } else {
-      navigate(`/admin/profile-search/${encodeURIComponent(trimmed)}`);
+      navigate(`/profile-search/${encodeURIComponent(trimmed)}`);
     }
   };
 
