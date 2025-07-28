@@ -235,7 +235,7 @@ return (
       <option value="24px">24px</option>
       <option value="32px">32px</option>
     </select>
-
+      
     <select
       title="Line Spacing"
       onChange={(e) => applyLineHeight(e.target.value)}

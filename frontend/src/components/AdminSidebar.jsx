@@ -67,7 +67,7 @@ const AdminSidebar = () => {
         <div className="flex flex-col items-center mb-6 text-center">
           <img
             className="w-20 h-20 rounded-full object-cover"
-            src={admin.profileImage || "https://via.placeholder.com/150"}
+            src={admin.profileImage}
             alt="Admin"
           />
           <h4 className="mt-2 text-lg font-semibold truncate max-w-[180px]">
